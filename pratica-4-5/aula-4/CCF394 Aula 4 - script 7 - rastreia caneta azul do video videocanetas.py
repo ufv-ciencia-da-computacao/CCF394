@@ -68,7 +68,7 @@ def usaimagemlida():
     cv2.destroyAllWindows()
 
 
-cap = cv2.VideoCapture("VIDEOCANETAS.MP4")
+cap = cv2.VideoCapture("videocanetas.mp4")
 if (cap.isOpened()== False): 
   print("Erro abertura da camera")
   usaimagemlida()

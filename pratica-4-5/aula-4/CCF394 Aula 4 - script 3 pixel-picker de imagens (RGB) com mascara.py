@@ -25,6 +25,7 @@ def on_mouse(event, x, y, flags, param):
 pixels =np.zeros((1,3),dtype=np.int8)
 print(pixels)
 img=cv2.imread("jogo do cruzeiro.png")
+# img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 img=cv2.medianBlur(img,3)
 cv2.namedWindow('Original')
 # seta calback para a janelça
@@ -66,6 +67,9 @@ else:
 
 lower = np.array([lowerB,lowerG,lowerR])
 upper = np.array([mediaB+desvioPadrao[0],mediaG+desvioPadrao[1],mediaR+desvioPadrao[2]])
+
+print(lower)
+print(upper)
 
 mask = cv2.inRange(img, lower, upper)
 res = cv2.bitwise_and(img,img, mask= mask)            
