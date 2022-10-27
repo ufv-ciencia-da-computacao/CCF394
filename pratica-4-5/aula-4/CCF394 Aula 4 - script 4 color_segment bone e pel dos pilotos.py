@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 cv2.destroyAllWindows()
 # saturação >= 0.2) and (0.5 < luminance/Saturation < 3.0) and (h <= 28 or hue >= 330)
-image = cv2.imread('pilotosPEQUENO.png')
+image = cv2.imread('pilotosPequeno.png')
 
 blur = cv2.medianBlur(image ,3)
 hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV).astype(float)

@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
-original = cv2.imread('impressaodigital.jpg',0)
+# interessante
+
+original = cv2.imread('impressaoDigital.JPG',0)
 size = np.size(original)
 skel = np.zeros(original.shape,np.uint8)
 ret,img = cv2.threshold(original,127,255,0)

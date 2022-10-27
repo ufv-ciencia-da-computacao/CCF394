@@ -36,7 +36,7 @@ def dilatation(val):
     element = cv2.getStructuringElement(dilatation_type, (2*dilatation_size + 1, 2*dilatation_size+1), (dilatation_size, dilatation_size))
     dilatation_dst = cv2.dilate(paraDilatar, element)
     cv2.imshow(title_dilatation_window, dilatation_dst)
-paraErodir=cv2.imread("paraerodir.png")
+paraErodir=cv2.imread("paraErodir.png")
 paraDilatar=cv2.imread("paraDilatar.png")
 
 cv2.namedWindow(title_erosion_window)

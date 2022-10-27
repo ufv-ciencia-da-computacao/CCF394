@@ -6,11 +6,16 @@ from __future__ import division
 from skimage.filters import threshold_local
 import argparse
 
+## Transformations
 def rotate_image(img, angle):
     lin, col, dim = img.shape
     (cX, cY) = (lin//2, col//2)
     M = cv2.getRotationMatrix2D((cX, cY), angle, 1.0)
     return cv2.warpAffine(img, M, (lin, col))
+
+def linear_transform(img, alpha, beta):
+    new_image = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
+    return new_image
 
 def change_pixel_by_pixel(img, g_bounds: tuple, b_bounds: tuple, r_bounds: tuple, new_b, new_g, new_r):
     [col, lin, dim] = img.shape
@@ -28,7 +33,128 @@ def change_pixel_by_pixel(img, g_bounds: tuple, b_bounds: tuple, r_bounds: tuple
     return img2
 
 
+## Thresholding and Binarizing
+def thresholding(image, threshold, max_value, comb=[]): 
+    """
+    image: imagem a ser binarizada
+    threshold: valor de limiar
+    max_value: valor máximo de pixel
+    comb: combinação de canais de cores
+        - cv2.THRESH_BINARY
+        - cv2.THRESH_BINARY_INV
+        - cv2.THRESH_TRUNC
+        - cv2.THRESH_TOZERO
+        - cv2.THRESH_TOZERO_INV
+        - cv2.THRESH_OTSU
+        - cv2.THRESH_TRIANGLE
+        - cv2.THRESH_MASK
+    """
+    if not comb:
+        _, output = cv2.threshold(image, threshold, max_value,cv2.THRESH_OTSU)
+    else:
+        _, output = cv2.threshold(image, threshold, max_value, sum(comb))
+    return output
 
+
+def adaptative_thresholding_cv2(img, neighbourhood_size, constant_c, filepath):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV,
+                                neighbourhood_size, constant_c)
+
+    return thresh
+
+def adaptative_thresholding_scikit(img, neighbourhood_size, constant_c, filepath):
+    threshold_value = threshold_local(img, neighbourhood_size, offset=constant_c)
+    # np.uint8 devolve a matriz para a faixa de 8 bits
+    thresh = (img < threshold_value).astype(np.uint8) * 255
+
+    return thresh
+
+## Noise
+def gaussian_noise(size, mean=0, std=0.01):
+    noise = np.multiply(np.random.normal(mean, std, size), 255)
+    return noise
+
+def impulsive_noise(image, prob=0.1, mode='salt_and_pepper'):
+    noise = np.array(image, copy=True)
+    for x in np.arange(image.shape[0]):
+        for y in np.arange(image.shape[1]):
+            rnd = np.random.random()
+            if rnd < prob:
+                rnd = np.random.random()
+                if rnd > 0.5:
+                    noise[x,y] = 255
+                else:
+                    noise[x,y] = 0
+    
+    return noise
+
+
+## Filters
+def sobel_filter(img):
+    sobelxy = cv2.Sobel(src=img, ddepth=cv2.CV_64F, dx=1, dy=1, ksize=3)
+    filtered_image_xy = cv2.convertScaleAbs(sobelxy)
+    
+    return filtered_image_xy
+
+def roberts_filter(img):
+    roberts_cross_v = np.array([[1, 0 ],
+                           [0,-1 ]] )
+  
+    roberts_cross_h = np.array([[ 0, 1 ],
+                                 [ -1, 0 ]])
+    img = np.float64(img)
+    img /= 255.
+    
+    from scipy import ndimage
+    
+    vertical = ndimage.convolve( img, roberts_cross_v )
+    horizontal = ndimage.convolve( img, roberts_cross_h )
+
+    edged_img = np.sqrt( np.square(horizontal) + np.square(vertical))
+    edged_img*=255
+    return edged_img
+
+def prewitt_filter(img):
+    kernelx = np.array([[1,1,1],[0,0,0],[-1,-1,-1]])
+    kernely = np.array([[-1,0,1],[-1,0,1],[-1,0,1]])
+    img_prewittx = cv2.filter2D(img, -1, kernelx)
+    img_prewitty = cv2.filter2D(img, -1, kernely)
+    img_prewitt=img_prewittx + img_prewitty
+    return img_prewitt
+
+
+## Plotting
+def plot_images(imgs, titles, x, y, figsize, cmap="viridis"):
+    images_list_w_titles = list(zip(imgs, titles))
+    
+    f, axarr = plt.subplots(x,y, figsize=figsize)
+    for i in range(x):
+        for j in range(y):
+            if x > 1:
+                axarr[i, j].imshow(np.uint8(images_list_w_titles[(i*y)+j][0]), cmap=cmap)
+                axarr[i, j].set_title(images_list_w_titles[(i*y)+j][1])
+            else:
+                axarr[j].imshow(np.uint8(images_list_w_titles[(i*y)+j][0]), cmap=cmap)
+                axarr[j].set_title(images_list_w_titles[(i*y)+j][1])
+
+## SpaceColor
+def get_spacecolor(original):
+    scale_percent = 60 # percent of original size
+    width = int(original.shape[1] * scale_percent / 100)
+    height = int(original.shape[0] * scale_percent / 100)
+    dim = (width, height)
+
+    original = cv2.resize(original, dim, interpolation = cv2.INTER_AREA)
+    
+    # Convert the BGR image to other color spaces
+    imageBGR = cv2.cvtColor(original,cv2.COLOR_BGR2RGB)
+    imageHSV = cv2.cvtColor(original,cv2.COLOR_BGR2HSV)
+    imageLAB = cv2.cvtColor(original,cv2.COLOR_BGR2LAB)
+    return imageBGR, imageHSV, imageLAB
+
+
+# Video
 def capture_video(output_file_path):
     camera = cv2.VideoCapture(0)
     outputFile = output_file_path
@@ -49,23 +175,7 @@ def capture_video(output_file_path):
     cv2.destroyAllWindows()
 
 
-def adaptative_thresholding_cv2(img, neighbourhood_size, constant_c, filepath):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV,
-                                neighbourhood_size, constant_c)
-    cv2.imshow("OpenCV Mean Threshold", thresh)
-    cv2.waitkey(0)
-    return thresh
-
-def adaptative_thresholding_scikit(img, neighbourhood_size, constant_c, filepath):
-    threshold_value = threshold_local(gray, neighbourhood_size, offset=constant_c)
-    # np.uint8 devolve a matriz para a faixa de 8 bits
-    thresh = (gray < threshold_value).astype(np.uint8) * 255
-    cv2.imshow("Scikit-image Mean Threshold", thresh)
-    cv2.waitKey(0)
-    return thresh
-
-
+# Histograma
 def histogram_colored(img, bins, hist_range, accumulate=False):
     bgr_planes = img
     b_hist = cv2.calcHist(bgr_planes, [0], None, [bins], hist_range, accumulate=accumulate)
@@ -106,72 +216,13 @@ def hist_cdf_by_flattening(img, equalized=False, bins=256, range_ = [0,256]):
 
     return hist, cdf, cdf_normalized
 
-
-
-def set_britghtness_and_contrast(image, brightnesss, contrast):
-    effect = controller(image, brightnesss, contrast)
-    return effect 
-
-def controller(img, Brilho=255, Contraste=127):
-    Brilho = int((Brilho - 0) * (255 - (-255)) / (510 - 0) + (-255))
-    Contraste = int((Contraste - 0) * (127 - (-127)) / (254 - 0) + (-127))
- 
-    if Brilho != 0:
-         if Brilho > 0:
-             shadow = Brilho
-             max = 255
-         else:
-            shadow = 0
-            max = 255 + Brilho
-         al_pha = (max - shadow) / 255
-         ga_mma = shadow
- 
-        # The function addWeighted calculates the weighted sum of two arrays
-         cal = cv2.addWeighted(img, al_pha, img, 0, ga_mma)
- 
-    else:
-        cal = img
- 
-    if Contraste != 0:
-        Alpha = float(131 * (Contraste + 127)) / (127 * (131 - Contraste))
-        Gamma = 127 * (1 - Alpha)
- 
-
-        cal = cv2.addWeighted(cal, Alpha, cal, 0, Gamma)
-    return cal
-
-def thresholding(image, threshold, max_value, comb=[]): 
-    """
-    image: imagem a ser binarizada
-    threshold: valor de limiar
-    max_value: valor máximo de pixel
-    comb: combinação de canais de cores
-        - cv2.THRESH_BINARY
-        - cv2.THRESH_BINARY_INV
-        - cv2.THRESH_TRUNC
-        - cv2.THRESH_TOZERO
-        - cv2.THRESH_TOZERO_INV
-        - cv2.THRESH_OTSU
-        - cv2.THRESH_TRIANGLE
-        - cv2.THRESH_MASK
-    """
-    if not comb:
-        _, output = cv2.threshold(image, threshold, max_value,cv2.THRESH_OTSU)
-    else:
-        _, output = cv2.threshold(image, threshold, max_value, sum(comb))
-    return output
-
-
-def linear_transform(img, alpha, beta):
-    new_image = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
-    return new_image
-
-def plot_image(images, plots, titles, cmap=None):
-    fig = plt.figure(figsize=(20, 20))
-    for i in range(len(images)):
-        ax = fig.add_subplot(plots[0], plots[1], i+1)
-        ax.imshow(images[i], cmap=cmap)
-        ax.set_title(titles[i])
-        ax.axis('off')
-    plt.show()
+def gera_histograma(image,title):
+    hist_img,_ = np.histogram(image, bins=256, range=(0,255))
+    plt.figure(figsize=(14,4))
+    plt.subplot(121)
+    plt.title(title)
+    plt.imshow(image, cmap="gray", vmin=0, vmax=255)
+    plt.axis('off')
+    plt.subplot(122)
+    plt.bar(np.arange(256), hist_img) 
     

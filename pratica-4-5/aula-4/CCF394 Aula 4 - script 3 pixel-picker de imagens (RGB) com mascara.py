@@ -47,7 +47,6 @@ mediaG=int(media[1])
 mediaR=int(media[2])
 print("Media B=%d, media G= %d, media R=%s \n" % (mediaB, mediaG, mediaR))
 rows,cols,cor = img.shape
-print(rows, cols)
 desvioPadrao= np.std(pixels, axis=0)/2
 desvioPadrao=np.uint8(desvioPadrao)
 if((mediaB-desvioPadrao[0])<0):
@@ -71,11 +70,11 @@ upper = np.array([mediaB+desvioPadrao[0],mediaG+desvioPadrao[1],mediaR+desvioPad
 print(lower)
 print(upper)
 
-mask = cv2.inRange(img, lower, upper)
-res = cv2.bitwise_and(img,img, mask= mask)            
+# mask = cv2.inRange(img, lower, upper)
+# res = cv2.bitwise_and(img,img, mask= mask)            
 
-cv2.imshow("Mascara ",mask)
-cv2.imshow('Imagens', np.hstack([img, res]))
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+# cv2.imshow("Mascara ",mask)
+# cv2.imshow('Imagens', np.hstack([img, res]))
+# cv2.waitKey(0)
+# cv2.destroyAllWindows()
 

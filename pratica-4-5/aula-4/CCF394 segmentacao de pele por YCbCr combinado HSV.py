@@ -16,10 +16,10 @@ import time
 
 # Count runtime
 
-img=cv2.imread("pilotosPEQUENO.png")
+img = cv2.imread('pilotosPequeno.png')
 img=cv2.medianBlur(img,5)
 HSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-CyCbCr = cv2.cvtColor(img,cv2.cv2.COLOR_BGR2YCrCb)
+CyCbCr = cv2.cvtColor(img,cv2.COLOR_BGR2YCrCb)
 rows,cols,cor = img.shape
 print(rows, cols)
 pixels =np.zeros((rows,cols),dtype=np.int8)

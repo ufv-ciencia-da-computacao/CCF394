@@ -9,7 +9,7 @@ import time
 
 # Count runtime
 
-img=cv2.imread("pilotosPEQUENO.png")
+img = cv2.imread('pilotosPequeno.png')
 img=cv2.medianBlur(img,5)
 HLS = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
 rows,cols,cor = img.shape
