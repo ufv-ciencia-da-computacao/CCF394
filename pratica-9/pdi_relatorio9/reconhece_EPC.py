@@ -3,32 +3,33 @@ import cv2
 from PIL import Image, ImageDraw
 import numpy as np
 
-def reconhece_pessoas(frame):
-  face_locations = face_recognition.face_locations(frame)
-  return face_locations
-
 def cria_conhecidos():
+  michel_face_encoding = []
+  janet_face_encoding = []
+  claire_face_encoding = []
+  junior_face_encoding = []
+  kady_face_encoding = []
+
+  known_face_names = []
+
   for i in range(1,6):
-    image_of_michel = face_recognition.load_image_file('michel'+str(i)+'.jpg')
-    michel_face_encoding = []
-    michel_face_encoding.append(face_recognition.face_encodings(image_of_michel)[0]) 
+    image_of_michel = face_recognition.load_image_file(f'./know/michel{i}.jpg')
+    michel_face_encoding.append(face_recognition.face_encodings(image_of_michel)[0])
 
-    image_of_janet = face_recognition.load_image_file('janet'+str(i)+'.jpg')
-    janet_face_encoding = []
-    janet_face_encoding.append(face_recognition.face_encodings(image_of_janet)[0]) 
+    image_of_janet = face_recognition.load_image_file(f'./know/janet{i}.jpg')
+    janet_face_encoding.append(face_recognition.face_encodings(image_of_janet)[0])
 
-    image_of_claire = face_recognition.load_image_file('claire'+str(i)+'.jpg')
-    claire_face_encoding = []
-    claire_face_encoding.append(face_recognition.face_encodings(image_of_claire)[0]) 
+    image_of_claire = face_recognition.load_image_file(f'./know/claire{i}.jpg')
+    claire_face_encoding.append(face_recognition.face_encodings(image_of_claire)[0])
 
-    image_of_junior = face_recognition.load_image_file('junior'+str(i)+'.jpg')
-    junior_face_encoding = []
-    junior_face_encoding.append(face_recognition.face_encodings(image_of_junior)[0]) 
+    image_of_junior = face_recognition.load_image_file(f'./know/junior{i}.jpg')
+    junior_face_encoding.append(face_recognition.face_encodings(image_of_junior)[0])
 
+    image_of_kady = face_recognition.load_image_file(f'./know/kady{i}.jpg')
+    kady_face_encoding.append(face_recognition.face_encodings(image_of_kady)[0])
 
-    image_of_kady = face_recognition.load_image_file('kady'+str(i)+'.jpg')
-    kady_face_encoding = []
-    kady_face_encoding.append(face_recognition.face_encodings(image_of_kady)[0]) 
+    known_face_names.extend(["Michel", "Janet", "Claire", "Junior", "Kady"])
+
 
   #  Create arrays of encodings and names
   known_face_encodings = [
@@ -39,17 +40,9 @@ def cria_conhecidos():
     kady_face_encoding
   ]
 
-  known_face_names = [
-    "Michel",
-    "Janet",
-    "Claire",
-    "Junior",
-    "Kady"
-  ]
+  return known_face_encodings, known_face_names
 
-  return known_face_encodings,known_face_names
-
-def marca_pessoas(frame,face_locations,known_face_encodings,known_face_names):
+def marca_pessoas(frame,known_face_encodings,known_face_names):
   
   # Find faces in test image
   face_locations = face_recognition.face_locations(frame)
@@ -61,16 +54,21 @@ def marca_pessoas(frame,face_locations,known_face_encodings,known_face_names):
   # Create a ImageDraw instance
   draw = ImageDraw.Draw(pil_image)
 
+  names = []
+
   # Loop through faces in test image
   for(top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
-    matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
+    matches = face_recognition.compare_faces(known_face_encodings, face_encoding, tolerance=0.2)
+    # print(matches)
     name = "Unknown Person"
-    matches = np.array(matches)
     # If match
-    if matches.any():
-      first_match_index = np.where(matches==True,)[0][0]
-      name = known_face_names[first_match_index]
-  
+    if np.array(matches).any():
+      matchedIdxs = [b.sum() for b in matches]
+      counts = {}
+
+      i = np.argmax(np.array(matchedIdxs))
+      name = known_face_names[i]
+           
     # Draw box
     draw.rectangle(((left, top), (right, bottom)), outline=(255,255,0))
 
@@ -85,36 +83,42 @@ def marca_pessoas(frame,face_locations,known_face_encodings,known_face_names):
 
 def main():
   known_face_encodings,known_face_names = cria_conhecidos()
+  
   EPC = cv2.VideoCapture('EPC-Pai-do-Ano.mp4')
+  
   if (EPC.isOpened()== False): 
     print("Erro abertura da camera")
   i = 0
+
+  vid_writer=None
+
   while(True):
     # Take each frame
     ret , frame = EPC.read()
     frame_width = int(EPC.get(3))
     frame_height = int(EPC.get(4))
-    cv2.imshow("teste",frame)
-    vid_writer = cv2.VideoWriter('saida.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 60, (frame_width,frame_height))
+    
+    if vid_writer is None:
+      vid_writer = cv2.VideoWriter('saida.avi', cv2.VideoWriter_fourcc(*"MJPG"), 5, (frame_width,frame_height))
+
     if ret:
       frame = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)        
-      face_locations = reconhece_pessoas(frame)
-      pil_image = marca_pessoas(frame,face_locations,known_face_encodings,known_face_names)
+      pil_image = marca_pessoas(frame, known_face_encodings, known_face_names)
       # pil_image.save(str(i)+".jpg")
       res = np.array(pil_image)
+      res = cv2.cvtColor(res,cv2.COLOR_RGB2BGR)  
       vid_writer.write(res)
-      cv2.waitKey(30)
     else:
       break
-    k = cv2.waitKey(5) & 0xFF
-    if k == 27:
-      EPC.release()
-      break
+
+    
     i += 1
-    if 7*i < int(EPC.get(cv2.CAP_PROP_FRAME_COUNT)):
-      EPC.set(cv2.CAP_PROP_POS_FRAMES, 7*i)
+    
+    if 5*i < int(EPC.get(cv2.CAP_PROP_FRAME_COUNT)):
+      EPC.set(cv2.CAP_PROP_POS_FRAMES, 5*i)
     else:
       EPC.set(cv2.CAP_PROP_POS_FRAMES, int(EPC.get(cv2.CAP_PROP_FRAME_COUNT)))
+    
     print('Position:', int(EPC.get(cv2.CAP_PROP_POS_FRAMES)))
   vid_writer.release()
   cv2.destroyAllWindows()
